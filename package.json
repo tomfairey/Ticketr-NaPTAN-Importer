@@ -1,0 +1,27 @@
+{
+  "name": "ticketr-naptan-importer",
+  "version": "1.0.0",
+  "description": "Import the Government provided NaPTAN data into Ticketr database formatting",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomfairey/Ticketr-NaPTAN-Importer.git"
+  },
+  "author": "tomfairey",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tomfairey/Ticketr-NaPTAN-Importer/issues"
+  },
+  "homepage": "https://github.com/tomfairey/Ticketr-NaPTAN-Importer#readme",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "csv": "^5.3.2",
+    "fs": "0.0.1-security",
+    "fs-extra": "^9.0.1",
+    "ngeohash": "^0.6.3",
+    "xml2js": "^0.4.23"
+  }
+}
