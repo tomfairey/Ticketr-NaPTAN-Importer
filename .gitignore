@@ -102,3 +102,13 @@ dist
 
 # TernJS port file
 .tern-port
+NPTG.xml.json
+NPTG.xml.bak.json
+NaPTAN940.xml.json
+NaPTAN940.xml.bak.json
+NaPTAN940.xml.bak.bak.json
+NaPTAN910.xml.json
+NaPTAN910.xml.bak.json
+NaPTAN370.xml.json
+NaPTAN370.xml.bak.json
+Naptan.json
