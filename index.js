@@ -9,6 +9,8 @@ const os = require('os');
 const extract = require('extract-zip');
 const ngeohash = require('ngeohash');
 const mariadb = require('mariadb');
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 require('dotenv').config();
 
 // const folderName = `Ticketr-NaPTAN-Importer-${(new Date()).toISOString()}`;
@@ -34,9 +36,9 @@ let run = async () => {
 
     // await extract(fileNameWithExtension, { dir: path.join(storagePath, fileName) });
 
-    let NPTGXMLPath = '.\\Nptgxml';
+    let NPTGXMLPath = 'Nptgxml';
     // let NaPTANXMLPath = 'D:\\Downloads\\DATA_142421';
-    let NaPTANXMLPath = '.\\NaPTANxml';
+    let NaPTANXMLPath = 'NaPTANxml';
 
     let currentTimestamp = Math.round(Date.now() / 1000);
 
@@ -123,6 +125,12 @@ let run = async () => {
 
         console.log("Completed:", file, "B¬)");
     };
+
+    for(let area in outputObject['administrative_areas']) {
+        area = outputObject['administrative_areas'][area];
+
+        await exec(`wget http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${area.atco_area_code} -O ${area.atco_area_code}.zip & unzip ${area.atco_area_code}.zip -d ${NaPTANXMLPath}`);
+    }
 
     let filesNaPTAN = await fs.readdir(NaPTANXMLPath);
 
