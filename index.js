@@ -127,7 +127,7 @@ let run = async () => {
     };
 
     let count = 0;
-    let maxCount = 40;
+    let maxCount = 5;
     let maxMessage = false;
 
     for(let area in outputObject['administrative_areas']) {
