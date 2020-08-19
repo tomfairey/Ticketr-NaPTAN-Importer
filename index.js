@@ -126,11 +126,22 @@ let run = async () => {
         console.log("Completed:", file, "B¬)");
     };
 
-    for(let area in outputObject['administrative_areas']) {
-        area = outputObject['administrative_areas'][area];
+    let count = 0;
+    let maxCount = 40;
+    let maxMessage = false;
 
-        await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${area.atco_area_code}" -O "${area.atco_area_code}.zip"`);
-        await exec(`unzip "${area.atco_area_code}.zip" -d "${NaPTANXMLPath}"`);
+    for(let area in outputObject['administrative_areas']) {
+        if(maxCount <= count) {
+            area = outputObject['administrative_areas'][area];
+
+            await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${area.atco_area_code}" -O "${area.atco_area_code}.zip"`);
+            await exec(`unzip "${area.atco_area_code}.zip" -d "${NaPTANXMLPath}"`);
+        } else {
+            if(!maxMessage) {
+                console.log(`Max of`, maxCountm `areas reached!`);
+            }
+        }
+        count ++;
     }
 
     let filesNaPTAN = await fs.readdir(NaPTANXMLPath);
