@@ -129,7 +129,8 @@ let run = async () => {
     for(let area in outputObject['administrative_areas']) {
         area = outputObject['administrative_areas'][area];
 
-        await exec(`wget http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${area.atco_area_code} -O ${area.atco_area_code}.zip && unzip ${area.atco_area_code}.zip -d ${NaPTANXMLPath}`);
+        await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${area.atco_area_code}" -O "${area.atco_area_code}.zip"`);
+        await exec(`unzip "${area.atco_area_code}.zip" -d "${NaPTANXMLPath}"`);
     }
 
     let filesNaPTAN = await fs.readdir(NaPTANXMLPath);
