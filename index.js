@@ -138,7 +138,7 @@ let run = async () => {
             await exec(`unzip "${area.atco_area_code}.zip" -d "${NaPTANXMLPath}"`);
         } else {
             if(!maxMessage) {
-                console.log(`Max of`, maxCountm `areas reached!`);
+                console.log(`Max of`, maxCount, `areas reached!`);
             }
         }
         count ++;
