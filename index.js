@@ -34,9 +34,9 @@ let run = async () => {
 
     // await extract(fileNameWithExtension, { dir: path.join(storagePath, fileName) });
 
-    let NPTGXMLPath = 'D:\\Downloads\\Nptgxml';
+    let NPTGXMLPath = '.\\Nptgxml';
     // let NaPTANXMLPath = 'D:\\Downloads\\DATA_142421';
-    let NaPTANXMLPath = 'D:\\Downloads\\DATA_05957';
+    let NaPTANXMLPath = '.\\NaPTANxml';
 
     let currentTimestamp = Math.round(Date.now() / 1000);
 
