@@ -134,8 +134,6 @@ let run = async () => {
         area = outputObject['administrative_areas'][area];
         if(area.atco_area_code !== 900) {
             if(count <= maxCount) {
-                area = outputObject['administrative_areas'][area];
-
                 await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${area.atco_area_code}" -O "${area.atco_area_code}.zip"`);
                 await exec(`unzip "${area.atco_area_code}.zip" -d "${NaPTANXMLPath}"`);
             } else {
