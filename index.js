@@ -151,7 +151,7 @@ let run = async () => {
         }
     } else if(getSingleValue) {
         await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${getSingleValue}" -O "${getSingleValue}.zip"`);
-        await exec(`unzip "${getSingleValue}.zip" -d "${getSingleValue}"`);
+        await exec(`unzip "${getSingleValue}.zip" -d "${NaPTANXMLPath}"`);
     }
 
     let filesNaPTAN = await fs.readdir(NaPTANXMLPath);
