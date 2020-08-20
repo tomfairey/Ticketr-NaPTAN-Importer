@@ -130,8 +130,8 @@ let run = async () => {
     let maxCount = 5;
     let maxMessage = false;
 
-    let getAllBoolean = process.argv[0] === "--get-all";
-    let getSingleValue = process.argv[0] !== "--get-all" ? process.argv[0] : null;
+    let getAllBoolean = process.argv[2] === "--get-all";
+    let getSingleValue = process.argv[2] !== "--get-all" ? process.argv[0] : null;
 
     if(getAllBoolean) {
         for(let area in outputObject['administrative_areas']) {
