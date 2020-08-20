@@ -36,13 +36,16 @@ let run = async () => {
 
     // await extract(fileNameWithExtension, { dir: path.join(storagePath, fileName) });
 
-    let NPTGXMLPath = 'Nptgxml';
+    let NPTGXMLPath = path.join('Data', `Nptgxml`);
     // let NaPTANXMLPath = 'D:\\Downloads\\DATA_142421';
-    let NaPTANXMLPath = 'NaPTANxml';
+    let NaPTANXMLPath = path.join('Data', `NaPTANxml`);
 
     let currentTimestamp = Math.round(Date.now() / 1000);
 
     let outputObject = {};
+
+    await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Nptg.ashx?format=xml" -O "${path.join('Data', `Nptgxml`)}.zip"`);
+    await exec(`unzip "${path.join('Data', `Nptgxml`)}.zip" -d "${NPTGXMLPath}"`);
 
     let filesNPTG = await fs.readdir(NPTGXMLPath);
 
@@ -127,7 +130,7 @@ let run = async () => {
     };
 
     let count = 0;
-    let maxCount = 5;
+    let maxCount = 40;
     let maxMessage = false;
 
     let getAllBoolean = process.argv[2] === "--get-all";
@@ -138,8 +141,15 @@ let run = async () => {
             area = outputObject['administrative_areas'][area];
             if(area.atco_area_code !== 900) {
                 if(count <= maxCount) {
-                    await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${area.atco_area_code}" -O "${area.atco_area_code}.zip"`);
-                    await exec(`unzip "${area.atco_area_code}.zip" -d "${NaPTANXMLPath}"`);
+                    try {
+                        await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${area.atco_area_code}" -O "${path.join('Data', `NaPTAN${area.atco_area_code}`)}.zip"`);
+                        await exec(`unzip "${path.join('Data', `NaPTAN${area.atco_area_code}`)}.zip" -d "${NaPTANXMLPath}"`);
+                    } catch(e) {
+                        console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+                        console.log("Failure:", area.name, `(${area.region_code})`, "-", administrative_area_code, `(${atco_area_code}%)`);
+                        console.log(e);
+                        console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+                    }
                 } else {
                     if(!maxMessage) {
                         console.log(`Max of`, maxCount, `areas reached!`);
@@ -150,8 +160,8 @@ let run = async () => {
             }
         }
     } else if(getSingleValue) {
-        await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${getSingleValue}" -O "${getSingleValue}.zip"`);
-        await exec(`unzip "${getSingleValue}.zip" -d "${NaPTANXMLPath}"`);
+        await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${getSingleValue}" -O "${path.join('Data', `NaPTAN${getSingleValue}`)}.zip"`);
+        await exec(`unzip "${path.join('Data', `NaPTAN${getSingleValue}`)}.zip" -d "${NaPTANXMLPath}"`);
     }
 
     let filesNaPTAN = await fs.readdir(NaPTANXMLPath);
@@ -168,209 +178,242 @@ let run = async () => {
 
         let NaPTAN = result['NaPTAN'];
 
-        for(let stopPoint in NaPTAN['StopPoints'][0]['StopPoint']) {
-            stopPoint = NaPTAN['StopPoints'][0]['StopPoint'][stopPoint];
+        try {
 
-            if(stopPoint['$']['Status'] === "active") {
+            for(let stopPoint in NaPTAN['StopPoints'][0]['StopPoint']) {
+                stopPoint = NaPTAN['StopPoints'][0]['StopPoint'][stopPoint];
 
-                let stopType = null;
-                let stop_type_code = stopPoint['StopClassification'] ? stopPoint['StopClassification'][0]['StopType'][0] : null
-                let default_method_accuracy = null;
-                let continueWithThisStopInThisAdministrativeAreaRef = false;
+                if(stopPoint['$']['Status'] === "active") {
 
-                switch(stopPoint['AdministrativeAreaRef'][0]) {
-                    case "110":
-                        stopType = "train_station";
-                        default_method_accuracy = 100;
+                    let stopType = null;
+                    let stop_type_code = stopPoint['StopClassification'] ? stopPoint['StopClassification'][0]['StopType'][0] : null
+                    let default_method_accuracy = null;
+                    let continueWithThisStopInThisAdministrativeAreaRef = false;
 
-                            // Don't add anything other than each actual station 'access area'
-                            // as the data contains the relevant identifiers for timetables,
-                            // etc. while plaforms do not have this and would just be "ghost"
-                            // stops.
+                    switch(stopPoint['AdministrativeAreaRef'][0]) {
+                        case "110":
+                            stopType = "train_station";
+                            default_method_accuracy = 100;
 
-                        switch(stop_type_code) {
-                            case "RLY":
-                                continueWithThisStopInThisAdministrativeAreaRef = true;
-                                break;
+                                // Don't add anything other than each actual station 'access area'
+                                // as the data contains the relevant identifiers for timetables,
+                                // etc. while plaforms do not have this and would just be "ghost"
+                                // stops.
 
-                            default:
-                                continueWithThisStopInThisAdministrativeAreaRef = false;
-                                break;
-                        }
+                            switch(stop_type_code) {
+                                case "RLY":
+                                    continueWithThisStopInThisAdministrativeAreaRef = true;
+                                    break;
 
-                        break;
+                                default:
+                                    continueWithThisStopInThisAdministrativeAreaRef = false;
+                                    break;
+                            }
 
-                    case "147":
-                        stopType = "tram_stop";
-                        default_method_accuracy = 20;
+                            break;
 
-                            // Don't add anything other than each actual stop platform from
-                            // the tram area as to keep each side seperate which is preferred
-                            // for consistency and data reasons.
-                        
-                        switch(stop_type_code) {
-                            case "PLT":
-                                continueWithThisStopInThisAdministrativeAreaRef = true;
-                                break;
+                        case "147":
+                            stopType = "tram_stop";
+                            default_method_accuracy = 20;
 
-                            default:
-                                continueWithThisStopInThisAdministrativeAreaRef = false;
-                                break;
-                        }
+                                // Don't add anything other than each actual stop platform from
+                                // the tram area as to keep each side seperate which is preferred
+                                // for consistency and data reasons.
+                            
+                            switch(stop_type_code) {
+                                case "PLT":
+                                    continueWithThisStopInThisAdministrativeAreaRef = true;
+                                    break;
 
-                        break;
+                                default:
+                                    continueWithThisStopInThisAdministrativeAreaRef = false;
+                                    break;
+                            }
 
-                    default:
-                        stopType = "bus_stop";
-                        default_method_accuracy = 20;
+                            break;
 
-                            // Don't add anything other than actual bus stops from the regional
-                            // areas as tram and train nodes have their own national collection
-                            // which is preferred for consistency and data reasons.
+                        default:
+                            stopType = "bus_stop";
+                            default_method_accuracy = 20;
 
-                        switch(stop_type_code) {
-                            case "BCT":
-                                continueWithThisStopInThisAdministrativeAreaRef = true;
-                                break;
+                                // Don't add anything other than actual bus stops from the regional
+                                // areas as tram and train nodes have their own national collection
+                                // which is preferred for consistency and data reasons.
 
-                            case "BCS":
-                                continueWithThisStopInThisAdministrativeAreaRef = true;
-                                break;
+                            switch(stop_type_code) {
+                                case "BCT":
+                                    continueWithThisStopInThisAdministrativeAreaRef = true;
+                                    break;
 
-                            case "BCQ":
-                                continueWithThisStopInThisAdministrativeAreaRef = true;
-                                break;
+                                case "BCS":
+                                    continueWithThisStopInThisAdministrativeAreaRef = true;
+                                    break;
 
-                            default:
-                                continueWithThisStopInThisAdministrativeAreaRef = false;
-                                break;
-                        }
+                                case "BCQ":
+                                    continueWithThisStopInThisAdministrativeAreaRef = true;
+                                    break;
 
-                        break;
-                }
+                                default:
+                                    continueWithThisStopInThisAdministrativeAreaRef = false;
+                                    break;
+                            }
 
-                if(continueWithThisStopInThisAdministrativeAreaRef) {
-                    let atco_code = stopPoint['AtcoCode'] ? stopPoint['AtcoCode'][0] : null;
+                            break;
+                    }
 
-                    let stopTypeCodeKeys = {
-                        "BCT": {
-                            "position": "OnStreet",
-                            "mode": "Bus",
-                            "types" : [
-                                "MarkedPoint",
-                                "UnmarkedPoint",
-                                "HailAndRide",
-                                "FlexibleZone"
-                            ]
-                        },
-                        "BCS": {
-                            "position": "OffStreet",
-                            "mode": "BusAndCoach",
-                            "types" : [
-                                "Bay"
-                            ]
-                        },
-                        "BCQ": {
-                            "position": "OffStreet",
-                            "mode": "Bus",
-                            "types" : [
-                                "VariableBay"
-                            ]
-                        },
-                        "PLT": {
-                            "position": "OffStreet",
-                            "mode": "Metro",
-                            "types" : [
-                                "Platform"
-                            ]
-                        },
-                        "RLY": {
-                            "position": "OffStreet",
-                            "mode": "Rail",
-                            "types" : [
-                                "AccessArea"
-                            ]
-                        }
-                    };
+                    if(continueWithThisStopInThisAdministrativeAreaRef) {
+                        let atco_code = stopPoint['AtcoCode'] ? stopPoint['AtcoCode'][0] : null;
 
-                    let stopObject = {}
+                        let stopTypeCodeKeys = {
+                            "BCT": {
+                                "position": "OnStreet",
+                                "modes": [
+                                    "Bus"
+                                ],
+                                "types" : [
+                                    "MarkedPoint",
+                                    "UnmarkedPoint",
+                                    "HailAndRide",
+                                    "FlexibleZone"
+                                ]
+                            },
+                            "BCS": {
+                                "position": "OffStreet",
+                                "modes": [
+                                    "Bus",
+                                    "BusAndCoach"
+                                ],
+                                "types" : [
+                                    "Bay"
+                                ]
+                            },
+                            "BCQ": {
+                                "position": "OffStreet",
+                                "modes": [
+                                    "Bus",
+                                    "BusAndCoach"
+                                ],
+                                "types" : [
+                                    "VariableBay"
+                                ]
+                            },
+                            "PLT": {
+                                "position": "OffStreet",
+                                "modes": [
+                                    "Metro"
+                                ],
+                                "types" : [
+                                    "Platform"
+                                ]
+                            },
+                            "RLY": {
+                                "position": "OffStreet",
+                                "modes": [
+                                    "Rail"
+                                ],
+                                "types" : [
+                                    "AccessArea"
+                                ]
+                            }
+                        };
 
-                    stopObject['atco_code'] = atco_code ? atco_code : null;
-                    stopObject['naptan_code'] = stopPoint['NaptanCode'] ? stopPoint['NaptanCode'][0] : null;
-                    stopObject['plate_code'] = stopPoint['PlateCode'] ? stopPoint['PlateCode'][0] : null;
+                        let stopObject = {}
 
-                    let key1 = stopTypeCodeKeys[stop_type_code]['position'];
-                    let key2 = stopTypeCodeKeys[stop_type_code]['mode'];
-                    let key3;
+                        stopObject['atco_code'] = atco_code ? atco_code : null;
+                        stopObject['naptan_code'] = stopPoint['NaptanCode'] ? stopPoint['NaptanCode'][0] : null;
+                        stopObject['plate_code'] = stopPoint['PlateCode'] ? stopPoint['PlateCode'][0] : null;
 
-                    try {
-                        for(let type in stopTypeCodeKeys[stop_type_code]['types']) {
-                            type = stopTypeCodeKeys[stop_type_code]['types'][type];
-                            if(!key3) {
-                                for(let key in Object.keys(stopPoint['StopClassification'][0][key1][0][key2][0])) {
-                                    key = Object.keys(stopPoint['StopClassification'][0][key1][0][key2][0])[key];
-                                    if(!key3) {
-                                        type === key ? key3 = key : null;
+                        let key1 = stopTypeCodeKeys[stop_type_code]['position'];
+                        let key2 = false;
+                        let key3 = false;
+
+                        try {
+                            for(let mode in stopTypeCodeKeys[stop_type_code]['modes']) {
+                                mode = stopTypeCodeKeys[stop_type_code]['modes'][mode];
+                                if(!key2) {
+                                    for(let key in Object.keys(stopPoint['StopClassification'][0][key1][0])) {
+                                        key = Object.keys(stopPoint['StopClassification'][0][key1][0])[key];
+                                        if(!key2) {
+                                            key2 = mode === key ? key : null;
+                                        }
                                     }
                                 }
                             }
+
+                            for(let type in stopTypeCodeKeys[stop_type_code]['types']) {
+                                type = stopTypeCodeKeys[stop_type_code]['types'][type];
+                                if(!key3) {
+                                    for(let key in Object.keys(stopPoint['StopClassification'][0][key1][0][key2][0])) {
+                                        key = Object.keys(stopPoint['StopClassification'][0][key1][0][key2][0])[key];
+                                        if(!key3) {
+                                            key3 = type === key ? key : null;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch(e) {
+                            console.warn(e);
+                            console.warn("Error Data:", JSON.stringify(stopPoint['StopClassification']));
+                            throw new Error(e);
                         }
-                    } catch(e) {
-                        console.warn(e);
-                        throw new Error(e);
+
+                        stopObject['tiploc_code'] = stopType === "train_station" && stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'] && stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'][0] ? stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'][0]['TiplocRef'][0] : null;
+                        stopObject['crs_code'] = stopType === "train_station" && stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'] && stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'][0] ? stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'][0]['CrsRef'][0] : null;
+
+                        stopObject['type'] = stopType;
+                        stopObject['type_code'] = stop_type_code;
+                        stopObject['position_type'] = key1 ? key1 : null;
+                        stopObject['vehicle_type'] = key2 ? key2 : null;
+                        stopObject['marking_type'] = key3 ? key3 : null;
+
+                        if(!key1 && !key2 && !key3) {
+                            console.log("A key is null for", stopObject['atco_code'], ":", key1, key2, key3);
+                            return;
+                        }
+
+                        stopObject['name'] = stopPoint['Descriptor'][0]['CommonName'] ? stopPoint['Descriptor'][0]['CommonName'][0] : null;
+                        stopObject['short_name'] = stopPoint['Descriptor'][0]['ShortCommonName'] ? stopPoint['Descriptor'][0]['ShortCommonName'][0] : null;
+                        stopObject['description'] = null;
+                        stopObject['indicator'] = stopPoint['Descriptor'][0]['Indicator'] ? stopPoint['Descriptor'][0]['Indicator'][0] : null;
+
+                        stopObject['street_name'] = stopPoint['Descriptor'][0]['Street'] ? stopPoint['Descriptor'][0]['Street'][0] : null;
+                        stopObject['crossing_name'] = stopPoint['Descriptor'][0]['Crossing'] ? stopPoint['Descriptor'][0]['Crossing'][0] : null;
+                        stopObject['landmark_name'] = stopPoint['Descriptor'][0]['Landmark'] ? stopPoint['Descriptor'][0]['Landmark'][0] : null;
+
+                        stopObject['plusbus_zone'] = stopPoint['PlusbusZones'] ? stopPoint['PlusbusZones'][0]['PlusbusZoneRef'] ? stopPoint['PlusbusZones'][0]['PlusbusZoneRef'][0]['$']['Status'] === 'active' ? stopPoint['PlusbusZones'][0]['PlusbusZoneRef'][0]['_'] : null : null : null;
+                        stopObject['administrative_area_reference'] = stopPoint['AdministrativeAreaRef'] ? stopPoint['AdministrativeAreaRef'][0] : null;
+                        stopObject['nptg_locality_reference'] = stopPoint['Place'][0]['NptgLocalityRef'] ? stopPoint['Place'][0]['NptgLocalityRef'][0] : null;
+
+                        stopObject['latitude'] = stopPoint['Place'][0]['Location'][0]['Translation'][0]['Latitude'] ? stopPoint['Place'][0]['Location'][0]['Translation'][0]['Latitude'][0] : null;
+                        stopObject['longitude'] = stopPoint['Place'][0]['Location'][0]['Translation'][0]['Longitude'] ? stopPoint['Place'][0]['Location'][0]['Translation'][0]['Longitude'][0] : null;
+                        stopObject['accuracy'] = default_method_accuracy;
+                        stopObject['geohash'] = ngeohash.encode(stopObject['latitude'], stopObject['longitude']);
+
+                        stopObject['compass_point'] = stopPoint['StopClassification'][0][key1][0][key2][0] && stopPoint['StopClassification'][0][key1][0][key2][0][key3] && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0] && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing']  && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]  && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]['CompassPoint'] ? stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]['CompassPoint'][0] : null;
+                        stopObject['compass_degrees'] = stopPoint['StopClassification'][0][key1][0][key2][0] && stopPoint['StopClassification'][0][key1][0][key2][0][key3] && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0] && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing']  && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]  && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]['Degrees'] ? stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]['Degrees'][0] : null;
+
+                        stopObject['created'] = currentTimestamp;
+                        stopObject['last_modified'] = currentTimestamp;
+
+                        let stopArray = [];
+
+                        for(let item in stopObject) {
+                            item = stopObject[item];
+                            stopArray.push(item);
+                        }
+
+                        outputObject['stops'] ? null : outputObject['stops'] = [];
+                        outputObject['stops'].push(stopArray);
                     }
-
-                    stopObject['tiploc_code'] = stopType === "train_station" && stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'] && stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'][0] ? stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'][0]['TiplocRef'][0] : null;
-                    stopObject['crs_code'] = stopType === "train_station" && stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'] && stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'][0] ? stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'][0]['CrsRef'][0] : null;
-
-                    stopObject['type'] = stopType;
-                    stopObject['type_code'] = stop_type_code;
-                    stopObject['position_type'] = key1 ? key1 : null;
-                    stopObject['vehicle_type'] = key2 ? key2 : null;
-                    stopObject['marking_type'] = key3 ? key3 : null;
-
-                    if(!key1 && !key2 && !key3) {
-                        console.log("A key is null for", stopObject['atco_code'], ":", key1, key2, key3);
-                        return;
-                    }
-
-                    stopObject['name'] = stopPoint['Descriptor'][0]['CommonName'] ? stopPoint['Descriptor'][0]['CommonName'][0] : null;
-                    stopObject['short_name'] = stopPoint['Descriptor'][0]['ShortCommonName'] ? stopPoint['Descriptor'][0]['ShortCommonName'][0] : null;
-                    stopObject['description'] = null;
-                    stopObject['indicator'] = stopPoint['Descriptor'][0]['Indicator'] ? stopPoint['Descriptor'][0]['Indicator'][0] : null;
-
-                    stopObject['street_name'] = stopPoint['Descriptor'][0]['Street'] ? stopPoint['Descriptor'][0]['Street'][0] : null;
-                    stopObject['crossing_name'] = stopPoint['Descriptor'][0]['Crossing'] ? stopPoint['Descriptor'][0]['Crossing'][0] : null;
-                    stopObject['landmark_name'] = stopPoint['Descriptor'][0]['Landmark'] ? stopPoint['Descriptor'][0]['Landmark'][0] : null;
-
-                    stopObject['plusbus_zone'] = stopPoint['PlusbusZones'] ? stopPoint['PlusbusZones'][0]['PlusbusZoneRef'] ? stopPoint['PlusbusZones'][0]['PlusbusZoneRef'][0]['$']['Status'] === 'active' ? stopPoint['PlusbusZones'][0]['PlusbusZoneRef'][0]['_'] : null : null : null;
-                    stopObject['administrative_area_reference'] = stopPoint['AdministrativeAreaRef'] ? stopPoint['AdministrativeAreaRef'][0] : null;
-                    stopObject['nptg_locality_reference'] = stopPoint['Place'][0]['NptgLocalityRef'] ? stopPoint['Place'][0]['NptgLocalityRef'][0] : null;
-
-                    stopObject['latitude'] = stopPoint['Place'][0]['Location'][0]['Translation'][0]['Latitude'] ? stopPoint['Place'][0]['Location'][0]['Translation'][0]['Latitude'][0] : null;
-                    stopObject['longitude'] = stopPoint['Place'][0]['Location'][0]['Translation'][0]['Longitude'] ? stopPoint['Place'][0]['Location'][0]['Translation'][0]['Longitude'][0] : null;
-                    stopObject['accuracy'] = default_method_accuracy;
-                    stopObject['geohash'] = ngeohash.encode(stopObject['latitude'], stopObject['longitude']);
-
-                    stopObject['compass_point'] = stopPoint['StopClassification'][0][key1][0][key2][0] && stopPoint['StopClassification'][0][key1][0][key2][0][key3] && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0] && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing']  && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]  && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]['CompassPoint'] ? stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]['CompassPoint'][0] : null;
-                    stopObject['compass_degrees'] = stopPoint['StopClassification'][0][key1][0][key2][0] && stopPoint['StopClassification'][0][key1][0][key2][0][key3] && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0] && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing']  && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]  && stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]['Degrees'] ? stopPoint['StopClassification'][0][key1][0][key2][0][key3][0]['Bearing'][0]['Degrees'][0] : null;
-
-                    stopObject['created'] = currentTimestamp;
-                    stopObject['last_modified'] = currentTimestamp;
-
-                    let stopArray = [];
-
-                    for(let item in stopObject) {
-                        item = stopObject[item];
-                        stopArray.push(item);
-                    }
-
-                    outputObject['stops'] ? null : outputObject['stops'] = [];
-                    outputObject['stops'].push(stopArray);
                 }
             }
+            console.log("Completed:", file, "B¬)");
+        } catch(e) {
+            console.log("Error:", file, ":(");
+            console.warn(e);
+            console.warn("Error Data:", JSON.stringify(stopPoint['StopClassification']));
+            throw new Error(e);
         }
-        console.log("Completed:", file, "B¬)");
     };
 
     let pool = mariadb.createPool({host: process.env.databaseHost, user: process.env.databaseUser, password: process.env.databasePassword, database: process.env.databaseName, connectionLimit: 35});
