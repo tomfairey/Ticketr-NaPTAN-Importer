@@ -146,7 +146,7 @@ let run = async () => {
                         await exec(`unzip "${path.join('Data', `NaPTAN${area.atco_area_code}`)}.zip" -d "${NaPTANXMLPath}"`);
                     } catch(e) {
                         console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-                        console.log("Failure:", area.name, `(${area.region_code})`, "-", administrative_area_code, `(${atco_area_code}%)`);
+                        console.log("Failure:", area.name, `(${area.region_code})`, "-", area.administrative_area_code, `(${area.atco_area_code}%)`);
                         console.log(e);
                         console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
                     }
