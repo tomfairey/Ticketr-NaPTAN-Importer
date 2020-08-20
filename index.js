@@ -130,20 +130,28 @@ let run = async () => {
     let maxCount = 5;
     let maxMessage = false;
 
-    for(let area in outputObject['administrative_areas']) {
-        area = outputObject['administrative_areas'][area];
-        if(area.atco_area_code !== 900) {
-            if(count <= maxCount) {
-                await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${area.atco_area_code}" -O "${area.atco_area_code}.zip"`);
-                await exec(`unzip "${area.atco_area_code}.zip" -d "${NaPTANXMLPath}"`);
-            } else {
-                if(!maxMessage) {
-                    console.log(`Max of`, maxCount, `areas reached!`);
-                    maxMessage = true;
+    let getAllBoolean = process.argv[0] === "--get-all";
+    let getSingleValue = process.argv[0] !== "--get-all" ? process.argv[0] : null;
+
+    if(getAllBoolean) {
+        for(let area in outputObject['administrative_areas']) {
+            area = outputObject['administrative_areas'][area];
+            if(area.atco_area_code !== 900) {
+                if(count <= maxCount) {
+                    await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${area.atco_area_code}" -O "${area.atco_area_code}.zip"`);
+                    await exec(`unzip "${area.atco_area_code}.zip" -d "${NaPTANXMLPath}"`);
+                } else {
+                    if(!maxMessage) {
+                        console.log(`Max of`, maxCount, `areas reached!`);
+                        maxMessage = true;
+                    }
                 }
+                count ++;
             }
-            count ++;
         }
+    } else if(getSingleValue) {
+        await exec(`wget "http://naptan.app.dft.gov.uk/DataRequest/Naptan.ashx?format=xml&LA=${getSingleValue}" -O "${getSingleValue}.zip"`);
+        await exec(`unzip "${getSingleValue}.zip" -d "${getSingleValue}"`);
     }
 
     let filesNaPTAN = await fs.readdir(NaPTANXMLPath);
@@ -295,16 +303,21 @@ let run = async () => {
                     let key2 = stopTypeCodeKeys[stop_type_code]['mode'];
                     let key3;
 
-                    for(let type in stopTypeCodeKeys[stop_type_code]['types']) {
-                        type = stopTypeCodeKeys[stop_type_code]['types'][type];
-                        if(!key3) {
-                            for(let key in Object.keys(stopPoint['StopClassification'][0][key1][0][key2][0])) {
-                                key = Object.keys(stopPoint['StopClassification'][0][key1][0][key2][0])[key];
-                                if(!key3) {
-                                    type === key ? key3 = key : null;
+                    try {
+                        for(let type in stopTypeCodeKeys[stop_type_code]['types']) {
+                            type = stopTypeCodeKeys[stop_type_code]['types'][type];
+                            if(!key3) {
+                                for(let key in Object.keys(stopPoint['StopClassification'][0][key1][0][key2][0])) {
+                                    key = Object.keys(stopPoint['StopClassification'][0][key1][0][key2][0])[key];
+                                    if(!key3) {
+                                        type === key ? key3 = key : null;
+                                    }
                                 }
                             }
                         }
+                    } catch(e) {
+                        console.warn(e);
+                        throw new Error(e);
                     }
 
                     stopObject['tiploc_code'] = stopType === "train_station" && stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'] && stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'][0] ? stopPoint['StopClassification'][0][key1][0][key2][0]['AnnotatedRailRef'][0]['TiplocRef'][0] : null;
